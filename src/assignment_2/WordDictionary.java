@@ -1,4 +1,4 @@
-package assignment_2;
+//package assignment_2;
 
 /**
  * A class to store a dictionary of Strings and allowing for random Strings to

@@ -1,4 +1,6 @@
-package assignment_2;
+//package assignment_2;
+
+import java.util.concurrent.atomic.AtomicInteger;
 
 /**
  * A class to store the score as well as the number of words caught and missed.
@@ -8,30 +10,26 @@ package assignment_2;
  *
  */
 public class Score {
-	// //////////////////////////////////////////////
-	// Could make atomic?
-	// //////////////////////////////////////////////
-
 	// Number of words missed (hit the bottom before typed).
-	private int missedWords;
+	private AtomicInteger missedWords;
 	// Number of words caught (typed before hitting the bottom).
-	private int caughtWords;
+	private AtomicInteger caughtWords;
 	// Current score for the game.
-	private int gameScore;
+	private AtomicInteger gameScore;
 
 	/**
 	 * Create a new Score with values for the caught words, missed words and
 	 * score set to 0.
 	 */
 	Score() {
-		missedWords = 0;
-		caughtWords = 0;
-		gameScore = 0;
+		missedWords = new AtomicInteger();
+		caughtWords = new AtomicInteger();
+		gameScore = new AtomicInteger();
 	}
 
-	// //////////////////////////////////////////////
-	// All getters and setters must be synchronized
-	// //////////////////////////////////////////////
+	// All getters and setters must be synchronized.
+	// Decided to use atomic variables instead, with some synchronization where
+	// needed.
 
 	/**
 	 * Get the number of words missed.
@@ -39,7 +37,7 @@ public class Score {
 	 * @return Integer number of missed words.
 	 */
 	public int getMissed() {
-		return missedWords;
+		return missedWords.get();
 	}
 
 	/**
@@ -48,7 +46,7 @@ public class Score {
 	 * @return Integer number of caught words.
 	 */
 	public int getCaught() {
-		return caughtWords;
+		return caughtWords.get();
 	}
 
 	/**
@@ -56,8 +54,8 @@ public class Score {
 	 * 
 	 * @return Integer number of words fallen.
 	 */
-	public int getTotal() {
-		return (missedWords + caughtWords);
+	public synchronized int getTotal() {
+		return (missedWords.get() + caughtWords.get());
 	}
 
 	/**
@@ -66,14 +64,14 @@ public class Score {
 	 * @return The current game score.
 	 */
 	public int getScore() {
-		return gameScore;
+		return gameScore.get();
 	}
 
 	/**
 	 * Increment the number of words missed by one.
 	 */
 	public void missedWord() {
-		missedWords++;
+		missedWords.getAndIncrement();
 	}
 
 	/**
@@ -83,17 +81,17 @@ public class Score {
 	 * @param length
 	 *            The length of the caught word.
 	 */
-	public void caughtWord(int length) {
-		caughtWords++;
-		gameScore += length;
+	public synchronized void caughtWord(int length) {
+		caughtWords.getAndIncrement();
+		gameScore.getAndAdd(length);
 	}
 
 	/**
 	 * Reset the score. Set the caught words, missed words and score to 0.
 	 */
 	public void resetScore() {
-		caughtWords = 0;
-		missedWords = 0;
-		gameScore = 0;
+		caughtWords = new AtomicInteger();
+		missedWords = new AtomicInteger();
+		gameScore = new AtomicInteger();
 	}
 }

@@ -1,4 +1,4 @@
-package assignment_2;
+//package assignment_2;
 
 /**
  * 
@@ -15,30 +15,37 @@ public class WordRecord {
 
 	// The
 	private int maxY;
+	// Has the word been missed?
+	private boolean missed;
 	// Has the word started falling?
-	private boolean dropped;
+	private boolean falling;
 
-	// Speed of the word.
+	// Speed of the word (in pixels/second).
 	private int fallingSpeed;
-	// Defines the range of speeds allowed.
-	private static int maxWait = 1500;
-	private static int minWait = 100;
+	// Defines the range of speeds allowed (in pixels/second).
+	private static int maxSpeed = 50;
+	private static int minSpeed = 20;
+
+	// private static AtomicLong updateTimeAccumulator = new AtomicLong();
+	private long updateTimeAccumulator = 0;
 
 	// Dictionary of words.
 	public static WordDictionary dictionary;
 
 	/**
-	 * Create a new WordRecord with default values. X and Y coordinates set to
-	 * 0, text set to an empty String, maxY set to 300, dropped set to false and
-	 * the falling speed set to a random speed within the limits.
+	 * Create a new WordRecord with default values. X and Y coordinates set to 0
+	 * and 480 respectively, text set to an empty String, maxY set to 300,
+	 * dropped set to false and the falling speed set to a random speed within
+	 * the limits.
 	 */
 	WordRecord() {
-		text = "";
-		x = 0;
-		y = 0;
-		maxY = 300;
-		dropped = false;
-		fallingSpeed = (int) (Math.random() * (maxWait - minWait) + minWait);
+		this.text = "";
+		this.x = 0;
+		this.y = 0;
+		this.maxY = 300;
+		this.missed = false;
+		this.fallingSpeed = createSpeed();
+		this.falling = true;
 	}
 
 	/**
@@ -50,8 +57,13 @@ public class WordRecord {
 	 *            The word/text to set.
 	 */
 	WordRecord(String text) {
-		this();
 		this.text = text;
+		this.x = 0;
+		this.y = 0;
+		this.maxY = 300;
+		this.text = text;
+		this.fallingSpeed = createSpeed();
+		this.falling = true;
 	}
 
 	/**
@@ -67,14 +79,13 @@ public class WordRecord {
 	 *            Maximum Y.
 	 */
 	WordRecord(String text, int x, int maxY) {
-		this(text);
+		this.text = text;
 		this.x = x;
+		this.y = 0;
 		this.maxY = maxY;
+		this.fallingSpeed = createSpeed();
+		this.falling = true;
 	}
-
-	// ///////////////////////////////////////////////
-	// all getters and setters must be synchronized
-	// ///////////////////////////////////////////////
 
 	/**
 	 * Set the Y coordinate of the WordRecord.
@@ -85,7 +96,8 @@ public class WordRecord {
 	public synchronized void setY(int y) {
 		if (y > maxY) {
 			y = maxY;
-			dropped = true;
+			missed = true;
+			this.falling = false;
 		}
 		this.y = y;
 	}
@@ -176,18 +188,25 @@ public class WordRecord {
 	public synchronized void resetWord() {
 		resetPos();
 		text = dictionary.getNewWord();
-		dropped = false;
-		fallingSpeed = (int) (Math.random() * (maxWait - minWait) + minWait);
-		// System.out.println(getWord() + " falling speed = " + getSpeed());
+		missed = false;
+		fallingSpeed = createSpeed();
+		this.falling = true;
 	}
 
 	/**
 	 * Check if the WordRecord matches the String parameter.
 	 */
-	public synchronized boolean matchWord(String text) {
+	public synchronized boolean matchWord(String text, boolean reset) {
 		// System.out.println("Matching against: "+text);
 		if (text.equals(this.text)) {
-			resetWord();
+			if (reset)
+				resetWord();
+			else {
+				resetPos();
+				text = "";
+				falling = false;
+				fallingSpeed = 0;
+			}
 			return true;
 		} else
 			return false;
@@ -201,10 +220,43 @@ public class WordRecord {
 	}
 
 	/**
+	 * Move the WordRecord down based on the amount of time that has passed
+	 * since the last drop.
+	 * 
+	 * @param delta
+	 *            Time in milliseconds.
+	 */
+	public synchronized long dropByLastTime(long lastLoop) {
+		long currentTime = System.currentTimeMillis();
+		updateTimeAccumulator += currentTime - lastLoop;
+		int pixels = (int) (((double) fallingSpeed * 0.001) * updateTimeAccumulator);
+		updateTimeAccumulator -= ((long) (pixels * 1000.0 / fallingSpeed));
+		setY(y + pixels);
+		return currentTime;
+	}
+
+	/**
 	 * Return true if the WordRecord has been dropped.
 	 */
 	public synchronized boolean dropped() {
-		return dropped;
+		return missed;
 	}
 
+	/**
+	 * Return true if the WordRecord has been dropped.
+	 */
+	public synchronized boolean falling() {
+		return falling;
+	}
+
+	/**
+	 * Return true if the WordRecord has been dropped.
+	 */
+	public synchronized void setFalling(boolean falling) {
+		this.falling = falling;
+	}
+
+	private static int createSpeed() {
+		return (int) ((Math.random() * (maxSpeed - minSpeed) + minSpeed));
+	}
 }
