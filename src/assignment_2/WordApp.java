@@ -14,7 +14,6 @@ import javax.swing.JOptionPane;
 import javax.swing.JPanel;
 import javax.swing.JTextField;
 
-// Model is separate from the view.
 /**
  * Main class to initialize and run the game.
  * 
@@ -28,21 +27,25 @@ public class WordApp {
 	static int noWords = 4;
 	// Total words to fall in the game.
 	static int totalWords;
-
 	// Frame dimensions.
 	static int frameX = 1000;
 	static int frameY = 600;
 	// Limit for the words falling.
 	static int yLimit = 480;
-
+	// Dictionary of words.
 	static WordDictionary dictionary = new WordDictionary();
-
 	// Array of WordRecord objects
 	static WordRecord[] words;
-	static volatile boolean done; // must be volatile
+	// Is the game done?
+	static volatile boolean done;
+	// Score keeper.
 	static Score score = new Score();
-
+	// Panel for displaying game.
 	static WordPanel w;
+	// Score labels.
+	static JLabel caught, missed, scr;
+	// Controller to update the score.
+	private static Controller scoreController;
 
 	/**
 	 * Setup the GUI.
@@ -56,7 +59,7 @@ public class WordApp {
 	 */
 	public static void setupGUI(int frameX, int frameY, int yLimit) {
 		// Frame initiation and dimensions.
-		JFrame frame = new JFrame("Typer");
+		JFrame frame = new JFrame("Typer - An Exercise In Concurrency");
 		frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
 		frame.setSize(frameX, frameY);
 
@@ -70,49 +73,28 @@ public class WordApp {
 		w.setSize(frameX, yLimit + 100);
 		g.add(w);
 
+		// Controller
+		scoreController = new Controller(words, totalWords, score, w);
+
 		// Score information and text entry.
 		JPanel txt = new JPanel();
 		txt.setLayout(new BoxLayout(txt, BoxLayout.LINE_AXIS));
 
 		// Score information.
-		JLabel caught = new JLabel("Caught: " + score.getCaught() + "    ");
-		JLabel missed = new JLabel("Missed:" + score.getMissed() + "    ");
-		JLabel scr = new JLabel("Score:" + score.getScore() + "    ");
+		caught = new JLabel("Caught: " + score.getCaught() + "    ");
+		missed = new JLabel("Missed:" + score.getMissed() + "    ");
+		scr = new JLabel("Score:" + score.getScore() + "    ");
 		// Add the JLabels to the JPanel.
 		txt.add(caught);
 		txt.add(missed);
 		txt.add(scr);
-
-		// [snip]
 
 		// Text entry.
 		final JTextField textEntry = new JTextField("", 20);
 		textEntry.addActionListener(new ActionListener() {
 			public void actionPerformed(ActionEvent evt) {
 				String text = textEntry.getText();
-				// Compare entered text to current words in the array.
-				if (done)
-					return;
-				for (int i = 0; i < noWords; i++) {
-					int x = words[i].getX();
-					int y = words[i].getY();
-					boolean reset = true;
-					if (totalWords - score.getTotal() <= noWords)
-						reset = false;
-					if (words[i].matchWord(text, reset)) {
-						score.caughtWord(text.length());
-						w.explode(x, y);
-						// ////////Scoring///////////////////////////////
-						caught.setText("Caught: " + score.getCaught() + "    ");
-						missed.setText("Missed:" + score.getMissed() + "    ");
-						scr.setText("Score:" + score.getScore() + "    ");
-						if (score.getTotal() == totalWords) {
-							done = true;
-							stopGame();
-						}
-						break;
-					}
-				}
+				scoreController.matchWord(text);
 				textEntry.setText("");
 				textEntry.requestFocus();
 			}
@@ -126,38 +108,37 @@ public class WordApp {
 		// Buttons.
 		JPanel b = new JPanel();
 		b.setLayout(new BoxLayout(b, BoxLayout.LINE_AXIS));
+
 		// Start button.
 		JButton startButton = new JButton("Start");
-		;
 		// Add the listener to the JButton to handle the "pressed" event.
 		startButton.addActionListener(new ActionListener() {
 			public void actionPerformed(ActionEvent e) {
-				// Should start the game, initiate the threads.
+				// Start the game, initiate the threads.
 				restartGame();
 				// Return focus to the text entry field.
 				textEntry.requestFocus();
-				// System.out.println("Start pushed");
 			}
 		});
+
 		// End button.
 		JButton endButton = new JButton("End");
-		;
 		// Add the listener to the JButton to handle the "pressed" event.
 		endButton.addActionListener(new ActionListener() {
 			public void actionPerformed(ActionEvent e) {
 				// End the game.
 				stopGame();
-				// System.out.println("End pushed");
 			}
 		});
+
 		JButton quitButton = new JButton("Quit");
-		;
 		// Add the listener to the JButton to handle the "pressed" event.
 		quitButton.addActionListener(new ActionListener() {
 			public void actionPerformed(ActionEvent e) {
 				System.exit(0);
 			}
 		});
+
 		// Add the buttons to the JPanel.
 		b.add(startButton);
 		b.add(endButton);
@@ -214,7 +195,7 @@ public class WordApp {
 	 */
 	public static void main(String[] args) {
 		// For compiling in IDE:
-		// totalWords = 10;
+		// totalWords = 5;
 		// noWords = 3;
 		// String[] fileDictionary = getDictFromFile("");
 
@@ -261,12 +242,6 @@ public class WordApp {
 		// Shared array of current words.
 		words = new WordRecord[noWords];
 
-		// [snip]
-
-		setupGUI(frameX, frameY, yLimit);
-
-		// Start WordPanel thread - for redrawing animation.
-
 		// Split the frame into equal portions for each word falling.
 		int x_inc = (int) frameX / noWords;
 		// Initialize shared array of blank words.
@@ -274,24 +249,77 @@ public class WordApp {
 			words[i] = new WordRecord("", i * x_inc, yLimit);
 		}
 
+		// Start WordPanel thread - for redrawing animation.
+		setupGUI(frameX, frameY, yLimit);
+
+		// Constantly update the score.
+		while (true)
+			if (!done) {
+				updateScore();
+			}
 	}
 
+	/**
+	 * Restart the game.
+	 */
 	private static void restartGame() {
+		// Stop any running game.
 		w.requestStop();
+		// Reset the score.
 		score.resetScore();
-		done = false;
+		// Reset the words.
 		for (int i = 0; i < noWords; i++) {
 			words[i].resetWord();
 		}
 		// Start the game thread.
 		Thread wThread = new Thread(w);
 		wThread.start();
+		// Start the controller thread.
+		Thread controlThread = new Thread(scoreController);
+		controlThread.start();
+		done = false;
 	}
 
+	/**
+	 * Stop the game.
+	 */
 	private static void stopGame() {
+		// Game is done.
+		done = true;
+		// Stop the game.
 		w.requestStop();
-		// Deal with scoring etc.
-		JOptionPane.showMessageDialog(null, "Your score:\n" + score.getScore());
+		scoreController.requestStop();
+		// Update and show the final score.
+		updateScore();
+		outputScore();
+	}
+
+	/**
+	 * Update the score.
+	 */
+	private static void updateScore() {
+		caught.setText("Caught: " + score.getCaught() + "    ");
+		missed.setText("Missed:" + score.getMissed() + "    ");
+		scr.setText("Score:" + score.getScore() + "    ");
+
+		// If all the words have fallen, end the game.
+		if (!done && score.getTotal() >= totalWords)
+			stopGame();
+	}
+
+	/**
+	 * Output the final score.
+	 */
+	private static void outputScore() {
+		String message = "You scored " + score.getScore() + " points.\n";
+		message += "You typed " + score.getCaught() + " word";
+		if (score.getCaught() != 1)
+			message += "s";
+		message += " correctly and missed " + score.getMissed() + " word";
+		if (score.getMissed() != 1)
+			message += "s";
+		message += ".";
+		JOptionPane.showMessageDialog(null, message);
 	}
 
 }

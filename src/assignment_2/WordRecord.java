@@ -1,6 +1,7 @@
 //package assignment_2;
 
 /**
+ * A class to hold words in the game.
  * 
  * @author Michael Evans (adapted from skeleton code provided by Michelle
  *         Kuttel)
@@ -12,38 +13,30 @@ public class WordRecord {
 	// Coordinates for location.
 	private int x;
 	private int y;
-
-	// The
+	// The maximum Y value a word can reach before being missed.
 	private int maxY;
-	// Has the word been missed?
-	private boolean missed;
 	// Has the word started falling?
 	private boolean falling;
-
 	// Speed of the word (in pixels/second).
 	private int fallingSpeed;
 	// Defines the range of speeds allowed (in pixels/second).
-	private static int maxSpeed = 50;
+	private static int maxSpeed = 60;
 	private static int minSpeed = 20;
-
-	// private static AtomicLong updateTimeAccumulator = new AtomicLong();
+	// Carry over time for updates for smoother updating.
 	private long updateTimeAccumulator = 0;
-
 	// Dictionary of words.
 	public static WordDictionary dictionary;
 
 	/**
-	 * Create a new WordRecord with default values. X and Y coordinates set to 0
-	 * and 480 respectively, text set to an empty String, maxY set to 300,
-	 * dropped set to false and the falling speed set to a random speed within
-	 * the limits.
+	 * Create a new WordRecord with default values. X and Y coordinates set to
+	 * 0, text set to an empty String, maxY set to 300, dropped set to false and
+	 * the falling speed set to a random speed within the limits.
 	 */
 	WordRecord() {
 		this.text = "";
 		this.x = 0;
 		this.y = 0;
 		this.maxY = 300;
-		this.missed = false;
 		this.fallingSpeed = createSpeed();
 		this.falling = true;
 	}
@@ -61,7 +54,6 @@ public class WordRecord {
 		this.x = 0;
 		this.y = 0;
 		this.maxY = 300;
-		this.text = text;
 		this.fallingSpeed = createSpeed();
 		this.falling = true;
 	}
@@ -96,7 +88,6 @@ public class WordRecord {
 	public synchronized void setY(int y) {
 		if (y > maxY) {
 			y = maxY;
-			missed = true;
 			this.falling = false;
 		}
 		this.y = y;
@@ -169,8 +160,6 @@ public class WordRecord {
 	public synchronized void setPos(int x, int y) {
 		setY(y);
 		setX(x);
-		String a = "";
-		a.equals("");
 	}
 
 	/**
@@ -182,34 +171,67 @@ public class WordRecord {
 
 	/**
 	 * Reset the WordRecord. Sets the Y coordinate to the start of the frame,
-	 * gets a new word from the dictionary, marks it as not dropped and gets a
-	 * new falling speed.
+	 * gets a new word from the dictionary, marks it as falling and gets a new
+	 * falling speed.
 	 */
 	public synchronized void resetWord() {
 		resetPos();
 		text = dictionary.getNewWord();
-		missed = false;
 		fallingSpeed = createSpeed();
-		this.falling = true;
+		falling = true;
+	}
+
+	/**
+	 * Retire the WordRecord. Sets the Y coordinate to the start of the frame,
+	 * sets an empty String as its word, marks it as not falling and sets the
+	 * falling speed to 0.
+	 */
+	private synchronized void retireWord() {
+		resetPos();
+		text = "";
+		fallingSpeed = 0;
+		falling = false;
 	}
 
 	/**
 	 * Check if the WordRecord matches the String parameter.
+	 * 
+	 * @param text
+	 *            Text to compare.
+	 * @param reset
+	 *            Should the word be reset (true) or retired (false).
 	 */
 	public synchronized boolean matchWord(String text, boolean reset) {
-		// System.out.println("Matching against: "+text);
+		// Don't match words that arn't falling.
+		if (!falling)
+			return false;
 		if (text.equals(this.text)) {
 			if (reset)
 				resetWord();
-			else {
-				resetPos();
-				text = "";
-				falling = false;
-				fallingSpeed = 0;
-			}
+			else
+				retireWord();
 			return true;
-		} else
+		}
+		return false;
+	}
+
+	/**
+	 * Check if the WordRecord has been missed.
+	 * 
+	 * @param reset
+	 *            Should the word be reset (true) or retired (false).
+	 */
+	public synchronized boolean missWord(boolean reset) {
+		if (!falling)
 			return false;
+		if (y >= maxY) {
+			if (reset)
+				resetWord();
+			else
+				retireWord();
+			return true;
+		}
+		return false;
 	}
 
 	/**
@@ -236,26 +258,27 @@ public class WordRecord {
 	}
 
 	/**
-	 * Return true if the WordRecord has been dropped.
-	 */
-	public synchronized boolean dropped() {
-		return missed;
-	}
-
-	/**
-	 * Return true if the WordRecord has been dropped.
+	 * Return true if the WordRecord is falling.
 	 */
 	public synchronized boolean falling() {
 		return falling;
 	}
 
 	/**
-	 * Return true if the WordRecord has been dropped.
+	 * Set if the word is falling.
+	 * 
+	 * @param falling
+	 *            Is the word falling.
 	 */
 	public synchronized void setFalling(boolean falling) {
 		this.falling = falling;
 	}
 
+	/**
+	 * Create a random speed between the limits.
+	 * 
+	 * @return Integer speed in pixels/second.
+	 */
 	private static int createSpeed() {
 		return (int) ((Math.random() * (maxSpeed - minSpeed) + minSpeed));
 	}

@@ -1,5 +1,11 @@
 //package assignment_2;
 
+/**
+ * A class to perform vector operations.
+ * 
+ * @author Michael Evans
+ *
+ */
 public class Vector {
 
 	private double x, y;

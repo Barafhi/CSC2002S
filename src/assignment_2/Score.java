@@ -89,7 +89,7 @@ public class Score {
 	/**
 	 * Reset the score. Set the caught words, missed words and score to 0.
 	 */
-	public void resetScore() {
+	public synchronized void resetScore() {
 		caughtWords = new AtomicInteger();
 		missedWords = new AtomicInteger();
 		gameScore = new AtomicInteger();

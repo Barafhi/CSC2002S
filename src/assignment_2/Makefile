@@ -6,6 +6,7 @@ CLASSES=Vector.java \
 	WordDictionary.java \
 	Score.java \
 	WordRecord.java \
+	Controller.java \
 	ParticleUpdater.java \
 	WordUpdater.java \
 	WordPanel.java \

@@ -1,20 +1,23 @@
 //package assignment_2;
 
-import java.util.concurrent.CopyOnWriteArrayList;
-
+/**
+ * A class to update the WordRecords in the game.
+ * 
+ * @author Michael Evans
+ *
+ */
 public class WordUpdater implements Runnable {
-
+	private volatile boolean running = false;
+	// Array of WordRecords.
 	private WordRecord[] words;
-	private volatile boolean running;
+	// Individual last update times for each word.
 	private volatile long[] lastLoopTime;
+	// Number of words.
 	private int noWords;
-	private int maxY;
 
-	public WordUpdater(WordRecord[] words, int maxY) {
-		running = true;
+	WordUpdater(WordRecord[] words) {
 		this.words = words;
 		noWords = words.length;
-		this.maxY = maxY;
 		lastLoopTime = new long[noWords];
 	}
 
