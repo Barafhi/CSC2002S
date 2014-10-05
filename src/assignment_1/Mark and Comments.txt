@@ -1,0 +1,12 @@
+Introduction 5
+
+Method 10
+
+Results 15
+Did not test for different processors
+
+Conclusion 5
+
+Extra 0
+
+Total 35/50
